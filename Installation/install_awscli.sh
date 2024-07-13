@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 function install_awscli(){
 
@@ -9,16 +10,16 @@ function install_awscli(){
 
   echo "Installing AWS CLI..."
 
-  if [ ! command -v unzip &> /dev/null ];then
-    if [ ! command -v yum &> /dev/null ];then
+  if [ ! $(command -v unzip ) ];then
+    if [ $(command -v yum) ];then
       echo "Installing unzip package with yum..."
       yum install unzip -y
-    elif [ ! command -v apt-get &> /dev/null ];then
+    elif [ $(command -v apt-get) ];then
       echo "Installing unzip package with apt-get..."
       apt-get install unzip -y
-    elif [ ! command -v zipper &> /dev/null ];then
+    elif [ $(command -v zipper) ];then
       echo "Installing unzip package with zypper..."
-      zypper i unzip -y 
+      zypper i unzip -y
     else
       >&2 echo "Unable to find the package manager in your machine"
       >&2 echo "Please install the unzip package manually!"
@@ -31,7 +32,7 @@ function install_awscli(){
   sudo ./aws/install
 
   echo "Clean up the installer"
-  rm -f awscliv2.zip aws
+  rm -rf awscliv2.zip aws
 }
 
 install_awscli
