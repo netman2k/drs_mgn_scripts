@@ -34,7 +34,7 @@ function usage(){
 function main(){
 
   # parse getopts options
-  local tmp_getopts=`getopt -o h,s,r,o,e,3 --long help,service:,region:,role:,endpoint:,s3-endpoint:,no-cleanup,no-run -- "$@"`
+  local tmp_getopts=`getopt -o h,s:,r:,o:,e:,3: --long help,service:,region:,role:,endpoint:,s3-endpoint:,no-cleanup,no-run -- "$@"`
   eval set -- "$tmp_getopts"
 
   while true; do
