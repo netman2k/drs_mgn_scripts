@@ -19,7 +19,7 @@ function usage(){
 function main(){
 
   # parse getopts options
-  local tmp_getopts=`getopt -o h,s,r --long help,service:,region, -- "$@"`
+  local tmp_getopts=`getopt -o h,s:,r: --long help,service:,region:, -- "$@"`
   eval set -- "$tmp_getopts"
 
   while true; do
