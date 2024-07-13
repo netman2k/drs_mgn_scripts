@@ -19,6 +19,8 @@ function usage(){
   printf "\t-s \t--service:       Type of service - MGN or DRS (default: DRS)\n"
   printf "\t-e \t--endpoint:      Service Endpoint Interface\n"
   printf "\t-3 \t--s3-endpoint:   S3 Endpoint Interface\n"
+  printf "\t\t--no-cleanup:       Not execute clean up stage\n"
+  printf "\t\t--no-run:           Not execute installer\n"
   printf "\t-h \t--help:          Show help of this command\n"
   echo
   echo "Example:"
@@ -32,7 +34,7 @@ function usage(){
 function main(){
 
   # parse getopts options
-  local tmp_getopts=`getopt -o h,s,r,o,e,3 --long help,service:,region:role:endpoint:s3-endpoint: -- "$@"`
+  local tmp_getopts=`getopt -o h,s,r,o,e,3 --long help,service:,region:,role:,endpoint:,s3-endpoint:,no-cleanup,no-run -- "$@"`
   eval set -- "$tmp_getopts"
 
   while true; do
@@ -43,6 +45,8 @@ function main(){
           -o|--role)                role=$2;       shift 2;;
           -e|--endpoint)            endpoint=$2;   shift 2;;
           -3|--s3-endpoint)         s3_endpoint=$2;   shift 2;;
+          --no-cleanup)             no_cleanup="NO_CLEANUP";   shift ;;
+          --no-run)                 no_run="NO_RUN";   shift ;;
           --) shift; break;;
           *) usage;;
       esac
@@ -56,21 +60,21 @@ function main(){
   printf "Service: ${service}\n"
   printf "Role: ${role}\n"
 
-  local account=$(aws sts get-caller-identity --query 'Credentials.Account')
+  local account=$(aws sts get-caller-identity --query 'Account' --output text)
 
   local values=($(aws sts assume-role --role-arn arn:aws:iam::${account}:role/${role} --role-session-name ${service}_agent_installation --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text))
 
-  if [ "${#values}" -ne 3 ];then
+  if [ "${#values[@]}" -ne 3 ];then
     printf "\e[31mUnable to get temporary credentials!\e[0m\n" 1>&2
     printf "\e[31mCheck the AWS CLI profile or EC2 instance profile attached!\e[0m\n" 1>&2
     exit 1
   fi
 
-  download_agent "${region}" "${values[0]}" "${values[1]}" "${values[2]}"
+  download_agent
 
-  local access_key_id="${value[0]}"
-  local secret_access_key="${value[1]}"
-  local session_token="${value[2]}"
+  local access_key_id="${values[0]}"
+  local secret_access_key="${values[1]}"
+  local session_token="${values[2]}"
   
   local command="sudo ./aws-replication-installer-init"
 
@@ -81,13 +85,20 @@ function main(){
   [ $endpoint ] && command="${command} --endpoint ${endpoint}"
   [ $s3_endpoint ] && command="${command} --s3-endpoint ${s3_endpoint}"
 
-  command="${command} --region ${region}"
+  command="${command} --tags INSTALLED_BY=${0}"
   command="${command} --no-prompt"
   
   echo "Command: ${command}"
 
+  if [ -z $no_run ];then
+    eval $command
+  fi
+
   # clean up
-  
+  if [ -z $no_cleanup ];then
+    rm -vf aws-replication-installer-init 2> /dev/null
+  fi
+
 }
 
 main "$@"
