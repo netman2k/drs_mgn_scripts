@@ -3,20 +3,10 @@ set -e
 
 declare -r INSTALLER_URL="https://aws-elastic-disaster-recovery-us-east-1.s3.us-east-1.amazonaws.com/latest/linux/aws-replication-installer-init"
 
-function install_agent(){
-  local region=$1
-  local access_key_id=$2
-  local secret_access_key=$3
-  local session_token=$4
-  
-	curl -o aws-replication-installer-init $INSTALLER_URL
-	chmod +x aws-replication-installer-init
-
-	sudo ./aws-replication-installer-init --region $region \
-	--aws-access-key-id "${access_key_id}" \
-	--aws-secret-access-key "${secret_access_key}" \
-	--aws-session-token "${session_token}" \
-	--no-prompt
+function download_agent(){
+ 
+  curl -o aws-replication-installer-init $INSTALLER_URL
+  chmod +x aws-replication-installer-init
 
 }
 
@@ -70,8 +60,32 @@ function main(){
 
   local values=($(aws sts assume-role --role-arn arn:aws:iam::${account}:role/${role} --role-session-name ${service}_agent_installation --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text))
 
-  install_agent "${region}" "${values[0]}" "${values[1]}" "${values[2]}"
+  if [ "${#values}" -ne 3 ];then
+    printf "\e[31mUnable to get temporary credentials!\e[0m\n" 1>&2
+    printf "\e[31mCheck the AWS CLI profile or EC2 instance profile attached!\e[0m\n" 1>&2
+    exit 1
+  fi
+
+  download_agent "${region}" "${values[0]}" "${values[1]}" "${values[2]}"
+
+  local access_key_id="${value[0]}"
+  local secret_access_key="${value[1]}"
+  local session_token="${value[2]}"
   
+  local command="sudo ./aws-replication-installer-init"
+
+  command="${command} --region ${region}"
+  command="${command} --aws-access-key-id ${access_key_id} --aws-secret-access-key ${secret_access_key}"
+  command="${command} --aws-session-token ${session_token}" 
+
+  [ $endpoint ] && command="${command} --endpoint ${endpoint}"
+  [ $s3_endpoint ] && command="${command} --s3-endpoint ${s3_endpoint}"
+
+  command="${command} --region ${region}"
+  command="${command} --no-prompt"
+  
+  echo "Command: ${command}"
+
   # clean up
   
 }
